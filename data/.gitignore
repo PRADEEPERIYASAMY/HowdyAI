@@ -1,0 +1,7 @@
+*
+!.gitignore
+!crawled
+!database
+!documents
+!samples/
+!samples/*.json
