@@ -1,0 +1,29 @@
+# ── Core (from base tamuGPT) ──────────────────────────────────────────────────
+openai>=1.26.0
+langchain==0.2.0
+langchain-community==0.2.0
+langchain-core==0.2.2
+langchain-openai==0.1.8
+langchain-text-splitters==0.2.0
+beautifulsoup4==4.12.3
+requests==2.31.0
+ddgs==9.14.0
+nltk==3.8.1
+python-dotenv==1.0.1
+PyPDF2==3.0.1
+tqdm==4.66.2
+tiktoken==0.7.0
+numpy==1.26.4
+pydantic==2.7.1
+
+# ── HowdyAI enhancements ──────────────────────────────────────────────────────
+langchain-chroma==0.1.2          # activates the Chroma vector store
+chromadb==0.5.0                  # Chroma backend
+streamlit==1.35.0                # replaces argparse CLI with web UI
+lxml==5.2.2                      # faster HTML parser for BeautifulSoup
+
+# ── Crawler ───────────────────────────────────────────────────────────────────
+scrapy==2.11.0
+
+# ── Dev / QA ──────────────────────────────────────────────────────────────────
+pre-commit==3.7.0
