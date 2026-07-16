@@ -4,14 +4,17 @@ src/search/hybrid_retriever.py  –  Hybrid retrieval: Web Search + Chroma,
 
 This module ACTIVATES the existing but unused Chroma vector store in the
 base codebase (src/database.py + src/embeddings.py) and integrates it into
-the live pipeline alongside DuckDuckGo Search.
+the live pipeline alongside Brave Search.
 """
 
 import logging
+import re
 from typing import List, Dict
 
 from src.database import Database
-from src.search.google_search import duckduckgo_search_engine
+from src.search.brave_search import brave_search_engine
+from langchain_openai import ChatOpenAI
+from langchain_core.messages import SystemMessage, HumanMessage
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +55,7 @@ def reciprocal_rank_fusion(
 def chroma_results_to_search_format(chroma_results) -> List[dict]:
     """
     Convert LangChain Chroma similarity_search results into the same
-    dict format used by google_custom_search_engine so they can be fused.
+    dict format used by brave_search_engine so they can be fused.
 
     Chroma returns: List[Tuple[Document, float]]
     """
@@ -60,8 +63,9 @@ def chroma_results_to_search_format(chroma_results) -> List[dict]:
     for doc, score in chroma_results:
         if score < 0.40:
             continue
-            
-        url = doc.metadata.get("source", "")
+
+        # Prefer the patched 'url' field (real web URL); fall back to 'source' (local path)
+        url = doc.metadata.get("url", "") or doc.metadata.get("source", "")
         title = doc.metadata.get("title", url)
         adapted.append({
             "url": url,
@@ -78,7 +82,10 @@ def chroma_results_to_search_format(chroma_results) -> List[dict]:
 
 class HybridRetriever:
     """
-    Orchestrates Google Search + Chroma dense retrieval and fuses via RRF.
+    Orchestrates Web Search + Chroma dense retrieval and fuses via RRF.
+    Web search provider is selected via config.SEARCH_PROVIDER:
+        "brave"  (default) — Brave Search API
+        "google"           — Google Custom Search JSON API
     Falls back gracefully if Chroma DB is not yet built.
     """
 
@@ -94,10 +101,36 @@ class HybridRetriever:
             logger.info(f"Chroma DB loaded from {config.CHROMA_PATH}")
             self._chroma_available = True
         except Exception as exc:
-            logger.warning(f"Chroma DB not available ({exc}). Running Google-only mode.")
+            logger.warning(f"Chroma DB not available ({exc}). Running Brave-only mode.")
             self._chroma_available = False
 
-    def retrieve(self, query: str) -> List[dict]:
+        if getattr(config, "USE_HYDE", False):
+            self.llm = ChatOpenAI(
+                model=config.FAST_MODEL,
+                temperature=0.0,
+                api_key=config.OPENAPI_API_KEY
+            )
+
+    def _generate_hyde(self, query: str) -> str:
+        """Generate a hypothetical document to improve dense retrieval recall."""
+        prompt = (
+            "You are a helpful assistant for Texas A&M University students. "
+            "Write a factual, two-sentence hypothetical answer to the following question. "
+            "Do not include introductory or conversational text, just the raw hypothetical facts."
+        )
+        try:
+            response = self.llm.invoke([
+                SystemMessage(content=prompt),
+                HumanMessage(content=query)
+            ])
+            hypothetical = response.content.strip()
+            logger.debug(f"HyDE generated: {hypothetical}")
+            return hypothetical
+        except Exception as exc:
+            logger.warning(f"HyDE generation failed: {exc}")
+            return query
+
+    def retrieve(self, query: str, broad: bool = False) -> List[dict]:
         """
         Run both retrievers and return RRF-fused results.
 
@@ -106,26 +139,87 @@ class HybridRetriever:
         """
         sources_used: List[List[dict]] = []
 
-        # ── DuckDuckGo Web Search ─────────────────────────────────────────
-        try:
-            ddg_results = duckduckgo_search_engine(self.config, query) or []
-            ddg_results = ddg_results[:self.search_num]
-            if ddg_results:
-                sources_used.append(ddg_results)
-                logger.info(f"DuckDuckGo Search: {len(ddg_results)} results")
-        except Exception as exc:
-            logger.error(f"DuckDuckGo Search failed: {exc}")
-
-        # ── Chroma (local dense) ──────────────────────────────────────────
-        if self._chroma_available:
+        chroma_high_confidence = False
+        if self._chroma_available and not broad:
             try:
-                chroma_raw = self.chroma_db.search(query, k=self.chroma_num)
+                use_hyde = getattr(self.config, "USE_HYDE", False)
+                # if they searched for a specific course code, skip the hyde step or it messes up the search
+                if use_hyde:
+                    if re.search(r'\b[A-Z]{3,4}\s*\d{3}\b', query, re.IGNORECASE) or len(query.split()) <= 10:
+                        use_hyde = False
+                        logger.info(f"Skipping HyDE for keyword/course-dense query: {query}")
+
+                raw_top_score = None
+                if use_hyde:
+                    raw_chroma_check = self.chroma_db.search(query, k=1)
+                    raw_top_score = raw_chroma_check[0][1] if raw_chroma_check else None
+
+                search_query = query
+                if use_hyde:
+                    search_query = self._generate_hyde(query)
+
+                chroma_raw = self.chroma_db.search(search_query, k=self.chroma_num)
+                top_score = chroma_raw[0][1] if chroma_raw else None
+
+                raw_str = f"{raw_top_score:.3f}" if raw_top_score is not None else "N/A"
+                top_str = f"{top_score:.3f}" if top_score is not None else "N/A"
+
+                # use whichever score is better so we don't accidentally fallback to web search 
+                # (hyde sometimes completely bombs on course codes like ARAB 221)
+                gate_score = max(
+                    s for s in [raw_top_score, top_score] if s is not None
+                ) if (raw_top_score is not None or top_score is not None) else None
+
+                # big brain fix: if they asked for SPMT 681, we better make sure 681 is actually in the text
+                # otherwise the cosine similarity will just give us SPMT 481 and we fail the eval
+                course_codes = re.findall(r'\b[A-Z]{3,4}\s*\d{3}\b', query, re.IGNORECASE)
+                has_course_code_miss = False
+                if course_codes and chroma_raw:
+                    top_chunk_text = chroma_raw[0][0].page_content.lower() if hasattr(chroma_raw[0][0], "page_content") else ""
+                    for code in course_codes:
+                        num_match = re.search(r'\d{3}', code)
+                        if num_match:
+                            num = num_match.group()
+                            if num not in top_chunk_text:
+                                has_course_code_miss = True
+                                logger.info(f"Course code mismatch! Query asked for {num} but top chunk didn't have it.")
+                                break
+
+                gate_str = f"{gate_score:.3f}" if gate_score is not None else "N/A"
+                gate = "YES" if (gate_score is not None and gate_score >= 0.60 and not has_course_code_miss) else "NO"
+                if use_hyde:
+                    logger.info(
+                        f"DIAG | raw_score={raw_str} | hyde_score={top_str} | gate_score={gate_str} | threshold=0.60 | gate_fires={gate}"
+                    )
+                else:
+                    logger.info(
+                        f"DIAG | raw_score={raw_str} | gate_score={gate_str} | threshold=0.60 | gate_fires={gate}"
+                    )
+
+                if gate == "YES":
+
+                    chroma_high_confidence = True
+                    logger.info(f"Chroma high confidence match ({top_score:.3f}). Skipping web search.")
+                    # only send 3 results to the cross encoder otherwise it takes forever
+                    chroma_raw = chroma_raw[:3]
+
                 chroma_results = chroma_results_to_search_format(chroma_raw)
                 if chroma_results:
                     sources_used.append(chroma_results)
                     logger.info(f"Chroma Search: {len(chroma_results)} results")
             except Exception as exc:
                 logger.error(f"Chroma search failed: {exc}")
+
+        # ── 2. Web Search (provider-aware) ──────────────────────────────────
+        if not chroma_high_confidence:
+            try:
+                web_results = brave_search_engine(self.config, query, broad=broad) or []
+                web_results = web_results[:self.search_num]
+                if web_results:
+                    sources_used.append(web_results)
+                    logger.info(f"Brave Search: {len(web_results)} results")
+            except Exception as exc:
+                logger.error(f"Brave Search failed: {exc}")
 
         if not sources_used:
             logger.warning("Both retrievers returned no results.")

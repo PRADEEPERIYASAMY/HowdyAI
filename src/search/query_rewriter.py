@@ -2,7 +2,7 @@
 src/search/query_rewriter.py  –  LLM-based query rewriting for improved retrieval.
 
 Reformulates the raw user question into a search-engine-optimised query
-with TAMU-specific terminology so both Google and Chroma return better docs.
+with TAMU-specific terminology so both Brave Search and Chroma return better docs.
 """
 
 import logging
@@ -16,7 +16,7 @@ class QueryRewriter:
     """Rewrites user queries for improved retrieval recall."""
 
     def __init__(self, config):
-        self.model = OpenAILanguageModel(config.REWRITE_TEMPLATE_PATH)
+        self.model = OpenAILanguageModel(config.REWRITE_TEMPLATE_PATH, model_name=config.FAST_MODEL)
         logger.debug("QueryRewriter initialised.")
 
     def rewrite(self, query: str, history: str = "") -> str:
