@@ -171,3 +171,5 @@ scraped_html_files/
 howdyai_cache.db
 logs/
 scratch/
+
+.vscode/

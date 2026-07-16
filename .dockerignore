@@ -1,0 +1,30 @@
+.venv
+__pycache__
+.pytest_cache
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.env
+
+# Databases
+*.db
+*.sqlite3
+data/database
+data/database_cosine
+
+# Logs and temp
+logs/
+*.log
+cpi_out.txt
+search_results.json
+search_results_google.json
+
+# IDE
+.vscode/
+.idea/
