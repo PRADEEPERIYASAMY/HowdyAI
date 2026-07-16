@@ -1,5 +1,8 @@
 Summarize the pertinent content within the context of the question within 400 words: {question}
 
-{context}
+CRITICAL RULES:
+- If the provided context below DOES NOT contain information relevant to the question, you MUST return exactly the phrase: "No relevant information found."
+- DO NOT answer the question using your pre-trained knowledge. Only summarize what is explicitly stated in the context.
 
----
+Context:
+{context}

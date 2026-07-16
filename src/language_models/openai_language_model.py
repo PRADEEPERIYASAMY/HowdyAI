@@ -12,9 +12,10 @@ logger = logging.getLogger(__name__)
 
 class OpenAILanguageModel(LanguageModel):
     def __init__(self,
-                 template_path=os.path.join(os.path.dirname(__file__), "../templates", "chat_template.txt")):
-        logger.debug("Initializing OpenAI Language Model")
-        self.model = ChatOpenAI()
+                 template_path=os.path.join(os.path.dirname(__file__), "../templates", "chat_template.txt"),
+                 model_name="gpt-4o-mini"):
+        logger.debug(f"Initializing OpenAI Language Model ({model_name})")
+        self.model = ChatOpenAI(model=model_name, max_retries=3, timeout=30.0)
 
         self.template_path = template_path
         self.template = self._load_template(self.template_path)
@@ -37,3 +38,7 @@ class OpenAILanguageModel(LanguageModel):
     def invoke(self, prompt):
         logger.debug(f"Predicting response with prompt: {prompt}")
         return self.model.invoke(prompt)
+
+    def stream(self, prompt):
+        logger.debug(f"Streaming response with prompt: {prompt}")
+        return self.model.stream(prompt)

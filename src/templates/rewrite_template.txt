@@ -5,6 +5,8 @@ Rewrite the user's question into a concise, keyword-rich search query that:
 2. Expands abbreviations (e.g. "CSCE" → "Computer Science Engineering CSCE Texas A&M").
 3. Removes filler words but keeps all important intent.
 4. If the question is a follow-up, incorporates relevant context from history.
+5. PRESERVE all temporal constraints (e.g. "Fall 2025", "upcoming semester").
+6. Translate academic colloquialisms intelligently based on context (e.g. if the context is about professors, translate "who is taking X" to "who is teaching X" or "professor for X").
 
 Output ONLY the rewritten query — no explanation, no punctuation at the end.
 

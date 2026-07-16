@@ -23,17 +23,17 @@ class QueryGuardrail:
     """Classifies queries as in-scope (TAMU) or out-of-scope."""
 
     def __init__(self, config):
-        self.model = OpenAILanguageModel(config.GUARDRAIL_TEMPLATE_PATH)
+        self.model = OpenAILanguageModel(config.GUARDRAIL_TEMPLATE_PATH, model_name=config.FAST_MODEL)
         logger.debug("QueryGuardrail initialised.")
 
-    def check(self, query: str) -> tuple[bool, str]:
+    def check(self, query: str, history: str = "") -> tuple[bool, str]:
         """
         Returns
         -------
         (is_in_scope: bool, message: str)
         """
         try:
-            prompt = self.model.generate_prompt(question=query, history="")
+            prompt = self.model.generate_prompt(question=query, history=history)
             response = self.model.invoke(prompt)
             label = response.content.strip()
             logger.debug(f"Guardrail label for {query[:60]!r}: {label}")

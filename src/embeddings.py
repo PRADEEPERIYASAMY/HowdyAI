@@ -9,7 +9,10 @@ class Embeddings:
     def __init__(self):
         logger.debug("Initializing LanguageModel")
         self.embedding_function = OpenAIEmbeddings(
-            model="text-embedding-3-large")
+            model="text-embedding-3-large",
+            max_retries=3,
+            timeout=30.0
+        )
 
     def embed_documents(self, docs):
         logger.debug(f"Generating embedding for doc: {docs}")
