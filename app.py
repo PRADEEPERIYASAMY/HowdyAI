@@ -4,6 +4,8 @@ Premium Apple-style dark UI — fully consistent glassmorphism design.
 """
 
 import os
+os.environ["ANONYMIZED_TELEMETRY"] = "False"
+
 import logging
 import logging.config
 
@@ -47,7 +49,7 @@ header { visibility: hidden; }
 /* Chat container width */
 .block-container {
     max-width: 860px !important;
-    padding: 1.5rem 2rem 7rem !important;
+    padding: 1.5rem 2rem 5rem !important;
     margin: 0 auto !important;
 }
 
@@ -150,34 +152,34 @@ header { visibility: hidden; }
 /* ────────────────────────────────────────────────
    3. HERO HEADER
    ──────────────────────────────────────────────── */
-.hero-wrap {
-    text-align: center;
-    padding: 2rem 1rem 1.8rem;
-}
-.hero-emoji {
-    font-size: 3.2rem;
-    display: block;
-    margin-bottom: 0.55rem;
-    animation: floatY 4s ease-in-out infinite;
-}
-@keyframes floatY {
-    0%,100% { transform: translateY(0); }
-    50%      { transform: translateY(-7px); }
-}
-.hero-title {
-    font-size: 2.4rem !important;
-    font-weight: 700 !important;
-    letter-spacing: -0.04em !important;
-    color: white !important;
-    margin: 0 0 0.3rem !important;
-    line-height: 1.1 !important;
-}
-.hero-sub {
-    font-size: 0.9rem;
-    color: rgba(255,255,255,0.38);
-    font-weight: 400;
-    margin: 0 0 0.8rem;
-}
+  .hero-wrap {
+      text-align: center;
+      padding: 0.5rem 1rem 0.2rem;
+  }
+  .hero-emoji {
+      font-size: 1.6rem;
+      display: block;
+      margin-bottom: 0.1rem;
+      animation: floatY 4s ease-in-out infinite;
+  }
+  @keyframes floatY {
+      0%,100% { transform: translateY(0); }
+      50%      { transform: translateY(-7px); }
+  }
+  .hero-title {
+      font-size: 1.4rem !important;
+      font-weight: 700 !important;
+      letter-spacing: -0.04em !important;
+      color: white !important;
+      margin: 0 0 0.2rem !important;
+      line-height: 1.1 !important;
+  }
+  .hero-sub {
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.38);
+      font-weight: 400;
+      margin: 0 0 0.5rem;
+  }
 .live-pill {
     display: inline-flex;
     align-items: center;
@@ -439,7 +441,7 @@ header { visibility: hidden; }
     background: rgba(13,13,20,0.92) !important;
     backdrop-filter: blur(16px) !important;
     border-top: 1px solid rgba(255,255,255,0.05) !important;
-    padding: 0.75rem 1rem !important;
+    padding: 0 !important;
     box-sizing: border-box !important;
     max-width: 100% !important;
 }
@@ -487,6 +489,11 @@ if "messages" not in st.session_state:
     st.session_state.messages = []   # [{role, content, meta?, user_query?}]
 
 config, cache, memory, guardrail, rewriter, retriever, generator = load_pipeline()
+from src.memory import ConversationMemory
+from src.metrics import MetricsLogger
+
+metrics_logger = MetricsLogger()
+
 
 
 # ── Sidebar ────────────────────────────────────────────────────────────────────
@@ -508,7 +515,6 @@ with st.sidebar:
     st.markdown('<span class="sb-section">Controls</span>', unsafe_allow_html=True)
     if st.button("🗑️  Clear Conversation"):
         st.session_state.messages = []
-        memory.clear()
         st.success("Conversation cleared!")
     if st.button("🧹  Clear Response Cache"):
         cache.clear()
@@ -623,44 +629,106 @@ def _render_meta(meta: dict, user_query: str = ""):
 render_bubbles_from_history()
 
 if user_input := st.chat_input("Ask anything about Texas A&M…  Howdy! 🤠"):
-    # Immediately render user bubble
-    st.markdown(
-        f'<div class="bubble-user">{user_input}</div>',
-        unsafe_allow_html=True,
-    )
-    st.session_state.messages.append({"role": "user", "content": user_input})
-
-    # Run pipeline
-    with st.spinner("Searching and thinking…"):
-        result = run_pipeline(
-            query=user_input,
-            config=config,
-            cache=cache,
-            memory=memory,
-            guardrail=guardrail,
-            rewriter=rewriter,
-            retriever=retriever,
-            generator=generator,
+        # Immediately render user bubble
+        st.markdown(
+            f'<div class="bubble-user">{user_input}</div>',
+            unsafe_allow_html=True,
         )
+        st.session_state.messages.append({"role": "user", "content": user_input})
+    
+        # Run pipeline
+        with st.spinner("Searching and thinking…"):
+            # Reconstruct memory dynamically for this session
+            memory = ConversationMemory(max_turns=config.MEMORY_MAX_TURNS)
+            for m in st.session_state.messages:
+                if m["role"] == "user":
+                    user_msg = m["content"]
+                    # Look ahead for assistant response
+                elif m["role"] == "assistant" and 'user_msg' in locals():
+                    memory.add_turn(user_msg, m["content"])
+                    
+            result = run_pipeline(
+                query=user_input,
+                config=config,
+                cache=cache,
+                memory=memory,
+                guardrail=guardrail,
+                rewriter=rewriter,
+                retriever=retriever,
+                generator=generator,
+                stream=True
+            )
+    
+        sources = result["sources"]
+        meta = {
+            "cache_hit":       result["cache_hit"],
+            "guardrail_hit":   result["guardrail_hit"],
+            "latency_s":       result["latency_s"],
+            "rewritten_query": result["rewritten_query"],
+            "sources":         sources,
+        }
+        
+        # Render AI bubble + meta
+        bubble_container = st.empty()
+        answer = ""
+        
+        if "answer_stream" in result:
+            for chunk in result["answer_stream"]:
+                answer += chunk.content
+                bubble_container.markdown(f'<div class="bubble-ai">{answer}▌</div>', unsafe_allow_html=True)
+            bubble_container.markdown(f'<div class="bubble-ai">{answer}</div>', unsafe_allow_html=True)
+            
+            # Post-stream updates
+            result["answer"] = answer
+            del result["answer_stream"]
+            if not result["cache_hit"] and not result["guardrail_hit"]:
+                cache.set(user_input, result)
+        else:
+            answer = result["answer"]
+            bubble_container.markdown(f'<div class="bubble-ai">{answer}</div>', unsafe_allow_html=True)
+            
+        metrics_logger.log_request(
+            query=user_input, 
+            cache_hit=result["cache_hit"], 
+            guardrail_hit=result["guardrail_hit"], 
+            latency=result["latency_s"], 
+            num_sources=len(sources)
+        )
+            
+        _render_meta(meta, user_input)
+    
+        # Persist
+        st.session_state.messages.append({
+            "role":       "assistant",
+            "content":    answer,
+            "meta":       meta,
+            "user_query": user_input,
+        })
+        st.rerun()
 
-    answer  = result["answer"]
-    sources = result["sources"]
-    meta = {
-        "cache_hit":       result["cache_hit"],
-        "guardrail_hit":   result["guardrail_hit"],
-        "latency_s":       result["latency_s"],
-        "rewritten_query": result["rewritten_query"],
-        "sources":         sources,
-    }
+with st.sidebar:
+    with st.expander("📊 Admin Dashboard", expanded=False):
+        st.markdown("### System Observability")
+        st.markdown("Real-time metrics for the pipeline.")
+        
+        if st.button("🧹 Clear Metrics Log", key="clear_metrics"):
+            metrics_logger.clear()
+            st.rerun()
 
-    # Render AI bubble + meta
-    st.markdown(f'<div class="bubble-ai">{answer}</div>', unsafe_allow_html=True)
-    _render_meta(meta, user_input)
+        logs = metrics_logger.get_metrics()
+        if not logs:
+            st.info("No requests logged yet.")
+        else:
+            total_requests = len(logs)
+            cache_hits = sum(1 for m in logs if m["cache_hit"])
+            guardrail_hits = sum(1 for m in logs if m["guardrail_hit"])
+            avg_latency = sum(m["latency"] for m in logs) / total_requests
+            
+            st.metric("Total Requests", total_requests)
+            st.metric("Cache Hit Rate", f"{(cache_hits/total_requests)*100:.1f}%")
+            st.metric("Guardrail Block Rate", f"{(guardrail_hits/total_requests)*100:.1f}%")
+            st.metric("Avg Latency", f"{avg_latency:.2f}s")
+            
+            st.markdown("#### Recent Logs")
+            st.dataframe(logs[::-1])
 
-    # Persist
-    st.session_state.messages.append({
-        "role":       "assistant",
-        "content":    answer,
-        "meta":       meta,
-        "user_query": user_input,
-    })

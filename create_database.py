@@ -47,10 +47,22 @@ def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
 
 
 def split_into_sentences(text: str) -> List[str]:
-    """Simple rule-based sentence splitter."""
+    """Simple rule-based sentence splitter, with a hard length cap for embedding limits."""
     pattern = r"(?<=[.!?])\s+(?=[A-Z])"
-    sentences = re.split(pattern, text.strip())
-    return [s.strip() for s in sentences if len(s.strip()) > 20]
+    raw_sentences = re.split(pattern, text.strip())
+    sentences = []
+    for s in raw_sentences:
+        s = s.strip()
+        if len(s) < 20:
+            continue
+        # Hard cap to avoid exceeding OpenAI 8192 token limit (~32000 chars)
+        max_chars = 15000
+        while len(s) > max_chars:
+            sentences.append(s[:max_chars])
+            s = s[max_chars:]
+        if len(s) > 20:
+            sentences.append(s)
+    return sentences
 
 
 def embed_sentences(sentences: List[str], client: OpenAI) -> List[np.ndarray]:
@@ -120,7 +132,7 @@ class DatabaseGenerator:
 
     def generate_database(self, reset: bool = False) -> None:
         if reset and os.path.exists(self.db_path):
-            shutil.rmtree(self.db_path)
+            self._safe_rmtree(self.db_path)
             logger.info(f"Cleared existing Chroma store at {self.db_path}")
 
         documents = self.load_documents()
@@ -130,6 +142,37 @@ class DatabaseGenerator:
         logger.info(f"Created {len(chunks)} semantic chunks")
 
         self.save_to_chroma(chunks)
+
+    @staticmethod
+    def _safe_rmtree(path: str, retries: int = 5, delay: float = 1.0) -> None:
+        """Delete a directory tree, retrying on Windows PermissionError (file locks)."""
+        import stat
+        import time
+
+        def on_error(func, fpath, exc_info):
+            # Make read-only files writable and retry
+            try:
+                os.chmod(fpath, stat.S_IWRITE)
+                func(fpath)
+            except Exception:
+                pass
+
+        for attempt in range(retries):
+            try:
+                shutil.rmtree(path, onerror=on_error)
+                return
+            except PermissionError as e:
+                if attempt < retries - 1:
+                    logger.warning(
+                        f"DB directory locked (attempt {attempt+1}/{retries}), "
+                        f"retrying in {delay}s. Stop the Streamlit app to release locks."
+                    )
+                    time.sleep(delay)
+                else:
+                    raise RuntimeError(
+                        f"Could not delete {path} after {retries} attempts. "
+                        f"Please stop the Streamlit app and re-run."
+                    ) from e
 
     def load_documents(self) -> list:
         loader = DirectoryLoader(
@@ -164,12 +207,27 @@ class DatabaseGenerator:
         return all_chunks
 
     def save_to_chroma(self, chunks: List[LCDocument]) -> None:
+        if not chunks:
+            return
+        batch_size = 500
+        total_batches = (len(chunks) - 1) // batch_size + 1
+        
+        # Initialize with first batch to create/load the collection
         db = Chroma.from_documents(
-            chunks,
+            chunks[:batch_size],
             self.embeddings.embedding_function,
             persist_directory=self.db_path,
+            collection_metadata={"hnsw:space": "cosine"}
         )
-        logger.info(f"Saved {len(chunks)} chunks to {self.db_path}.")
+        logger.info(f"Saved batch 1/{total_batches} ({len(chunks[:batch_size])} chunks)")
+        
+        # Add remaining batches
+        for i in range(batch_size, len(chunks), batch_size):
+            batch = chunks[i:i + batch_size]
+            db.add_documents(batch)
+            logger.info(f"Saved batch {i//batch_size + 1}/{total_batches} ({len(batch)} chunks)")
+            
+        logger.info(f"Successfully saved {len(chunks)} total chunks to {self.db_path}.")
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
@@ -185,7 +243,7 @@ if __name__ == "__main__":
     config = AppConfig()
     logging.config.dictConfig(config.logging_config)
 
-    logger.info(f"Generating database from {config.DOCUMENTS_PATH} → {config.DATABASE_PATH}")
+    logger.info(f"Generating database from {config.DOCUMENTS_PATH} -> {config.DATABASE_PATH}")
     gen = DatabaseGenerator(config.DOCUMENTS_PATH, config.DATABASE_PATH)
     gen.generate_database(reset=args.reset)
     logger.info("Database generation complete.")
