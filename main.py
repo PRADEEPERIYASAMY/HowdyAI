@@ -286,7 +286,7 @@ FINAL: HALLUCINATION or FAITHFUL"""
     response = judge_model.invoke([HumanMessage(content=prompt)])
     decision = response.content.strip().upper()
     
-    if "HALLUCINATION" in decision or "NONE FOUND" in decision or "UNSUPPORTED" in decision:
+    if "FINAL: FAITHFUL" not in decision:
         retry_count = state.get('retry_count', 0) + 1
         logger.warning(f"Hallucination detected (retry {retry_count})")
         if retry_count >= 2:

@@ -21,6 +21,9 @@ class MetricsLogger:
             f.write(json.dumps(record) + "\n")
             
     def get_metrics(self):
+        # TODO: Reading the entire JSONL into memory on every refresh does not scale for 
+        # production traffic. In a real deployment, migrate to a timeseries database 
+        # (like Prometheus) or use a log tailer to fetch only recent records.
         if not os.path.exists(self.log_path):
             return []
             

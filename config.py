@@ -48,7 +48,7 @@ class AppConfig:
         self.RANKER_TOP_K = 8
         self.MEMORY_MAX_TURNS = 6
         self.FAST_MODEL = "gpt-4o-mini"
-        self.STRONG_MODEL = "gpt-4o-mini"
+        self.STRONG_MODEL = os.getenv("STRONG_MODEL", "gpt-4o")
         self.USE_REFLECTION = False
 
         self.logging_config = self.get_logger(log_level)

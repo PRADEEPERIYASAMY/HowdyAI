@@ -4,7 +4,8 @@ from main import run_pipeline
 from config import AppConfig
 from src.cache import ResponseCache
 from src.memory import ConversationMemory
-from src.guardrail_rewriter import GuardrailRewriter
+from src.guardrail import QueryGuardrail
+from src.search.query_rewriter import QueryRewriter
 from src.search.hybrid_retriever import HybridRetriever
 from src.language_models.openai_language_model import OpenAILanguageModel
 
@@ -20,9 +21,13 @@ def mocked_pipeline_components(monkeypatch, tmp_path):
     cache = ResponseCache(db_path=str(tmp_path / "test_cache.db"))
     memory = ConversationMemory()
     
-    # Mock GuardrailRewriter
-    guardrail_rewriter = MagicMock(spec=GuardrailRewriter)
-    guardrail_rewriter.check_and_rewrite.return_value = (True, "rewritten query", "")
+    # Mock Guardrail
+    guardrail = MagicMock(spec=QueryGuardrail)
+    guardrail.check.return_value = (True, "")
+
+    # Mock Rewriter
+    rewriter = MagicMock(spec=QueryRewriter)
+    rewriter.rewrite.return_value = "rewritten query"
     
     # Mock Retriever
     retriever = MagicMock(spec=HybridRetriever)
@@ -41,7 +46,7 @@ def mocked_pipeline_components(monkeypatch, tmp_path):
     generator.invoke.side_effect = mock_invoke
     
     
-    return config, cache, memory, guardrail_rewriter, retriever, generator
+    return config, cache, memory, guardrail, rewriter, retriever, generator
 
 @patch('langchain_openai.ChatOpenAI')
 def test_full_pipeline_integration(mock_chatopenai, mocked_pipeline_components):
@@ -49,7 +54,7 @@ def test_full_pipeline_integration(mock_chatopenai, mocked_pipeline_components):
     mock_judge.invoke.return_value = MockResponse("FINAL: FAITHFUL")
     mock_chatopenai.return_value = mock_judge
 
-    config, cache, memory, guardrail_rewriter, retriever, generator = mocked_pipeline_components
+    config, cache, memory, guardrail, rewriter, retriever, generator = mocked_pipeline_components
     
     query = "What is the admissions deadline?"
     
@@ -58,7 +63,8 @@ def test_full_pipeline_integration(mock_chatopenai, mocked_pipeline_components):
         config=config,
         cache=cache,
         memory=memory,
-        guardrail_rewriter=guardrail_rewriter,
+        guardrail=guardrail,
+        rewriter=rewriter,
         retriever=retriever,
         generator=generator,
         use_cache=True
@@ -76,7 +82,8 @@ def test_full_pipeline_integration(mock_chatopenai, mocked_pipeline_components):
         config=config,
         cache=cache,
         memory=memory,
-        guardrail_rewriter=guardrail_rewriter,
+        guardrail=guardrail,
+        rewriter=rewriter,
         retriever=retriever,
         generator=generator,
         use_cache=True
