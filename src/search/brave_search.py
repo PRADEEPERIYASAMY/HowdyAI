@@ -6,7 +6,6 @@ import PyPDF2
 import io
 import asyncio
 import aiohttp
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 logger = logging.getLogger(__name__)
 

@@ -1,4 +1,3 @@
-import pytest
 from unittest.mock import MagicMock, patch
 from src.search.summarize_with_llm import summarize_search_results_with_llm
 

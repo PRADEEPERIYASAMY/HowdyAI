@@ -1,4 +1,3 @@
-import pytest
 from src.search.hybrid_retriever import reciprocal_rank_fusion
 
 def test_reciprocal_rank_fusion():

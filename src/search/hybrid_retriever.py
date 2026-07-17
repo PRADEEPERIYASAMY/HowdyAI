@@ -46,7 +46,7 @@ def reciprocal_rank_fusion(
 
     sorted_keys = sorted(scores, key=lambda x: scores[x], reverse=True)
     fused = [url_to_doc[k] for k in sorted_keys[:top_n]]
-    logger.debug(f"RRF fusion: {sum(len(l) for l in ranked_lists)} → {len(fused)} docs")
+    logger.debug(f"RRF fusion: {sum(len(lst) for lst in ranked_lists)} → {len(fused)} docs")
     return fused
 
 

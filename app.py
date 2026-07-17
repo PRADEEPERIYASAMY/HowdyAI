@@ -13,6 +13,8 @@ import streamlit as st
 
 from config import AppConfig
 from main import build_pipeline_components, run_pipeline
+from src.memory import ConversationMemory
+from src.metrics import MetricsLogger
 
 # ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -489,8 +491,7 @@ if "messages" not in st.session_state:
     st.session_state.messages = []   # [{role, content, meta?, user_query?}]
 
 config, cache, memory, guardrail, rewriter, retriever, generator = load_pipeline()
-from src.memory import ConversationMemory
-from src.metrics import MetricsLogger
+
 
 metrics_logger = MetricsLogger()
 

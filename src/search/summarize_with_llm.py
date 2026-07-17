@@ -1,5 +1,5 @@
 import logging
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor
 
 from src.language_models.openai_language_model import OpenAILanguageModel
 from src.search.data_processor import clean_html, extract_relevant_context

@@ -9,7 +9,7 @@ model starts optimizing for the rewrite task over the safety judgment.
 
 import json
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from src.guardrail import QueryGuardrail
 

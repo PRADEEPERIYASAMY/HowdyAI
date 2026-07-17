@@ -1,4 +1,3 @@
-import pytest
 import numpy as np
 from unittest.mock import MagicMock
 from create_database import split_into_sentences, semantic_chunk

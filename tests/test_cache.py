@@ -1,4 +1,3 @@
-import os
 import pytest
 from src.cache import ResponseCache
 

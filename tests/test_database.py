@@ -1,7 +1,5 @@
-import pytest
 from unittest.mock import MagicMock, patch
 from src.database import Database
-from config import AppConfig
 
 @patch('src.database.Chroma')
 @patch('src.database.Embeddings')

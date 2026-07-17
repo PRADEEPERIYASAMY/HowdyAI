@@ -57,7 +57,7 @@ def test_2_cache_hit():
     
     # Run 1
     t0 = time.time()
-    r1 = run_pipeline(q, config, cache, memory, guardrail, rewriter, retriever, generator, use_cache=True)
+    _ = run_pipeline(q, config, cache, memory, guardrail, rewriter, retriever, generator, use_cache=True)
     t1 = time.time()
     
     # Run 2
@@ -66,7 +66,7 @@ def test_2_cache_hit():
     t3 = time.time()
     
     lat1, lat2 = t1-t0, t3-t2
-    if r2.get("cache_hit") == True and lat2 < 0.5:
+    if r2.get("cache_hit") and lat2 < 0.5:
         return True, f"Run 1: {lat1:.2f}s, Run 2: {lat2:.2f}s (Cache Hit Confirmed)"
     return False, f"Run 2 cache_hit was {r2.get('cache_hit')}, latency: {lat2:.2f}s"
 
@@ -94,7 +94,7 @@ def test_5_6_retry_and_cache():
     
     config.USE_REFLECTION = True
     # Force hallucination by giving it garbage context
-    original_retrieve = retriever.retrieve
+    _ = retriever.retrieve
     def mock_retrieve(*args, **kwargs):
         return [{"url": "http://garbage.com", "title": "Garbage", "description": "Absolutely nothing relevant here. The TAMU CSCE degree takes 9000 hours.", "metadata": {"content": "Absolutely nothing relevant here. The TAMU CSCE degree takes 9000 hours."}}]
     retriever.retrieve = mock_retrieve
