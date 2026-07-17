@@ -1,5 +1,4 @@
 import os
-import pytest
 from src.metrics import MetricsLogger
 
 def test_metrics_logger(tmp_path):
