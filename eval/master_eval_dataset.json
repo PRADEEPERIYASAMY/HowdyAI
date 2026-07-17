@@ -163,8 +163,8 @@
     },
     {
         "query": "Which Computer Science and Engineering faculty member is quoted in the 2020 CPI election results discussing collaboration with US and international researchers?",
-        "ground_truth": "Unknown, but context provides it",
-        "url": "cpi.tamu.edu",
+        "ground_truth": "Tracy Hammond, Computer Science and Engineering, quoted discussing collaboration with a diverse group of researchers at the university and at other US and international institutions.",
+        "url": "cpi.tamu.edu/council-membership/election-results/2020-election-results",
         "type": "factual"
     },
     {

@@ -1,0 +1,62 @@
+[
+    {
+        "query": "Where and when are Mays Professional MBA classes held?",
+        "expected_url": "https://catalog.tamu.edu/graduate/colleges-schools-interdisciplinary/business/interdepartmental/professional-mba"
+    },
+    {
+        "query": "What does ARAB 221 Introduction to Arabic Language and Society cover?",
+        "expected_url": "https://catalog.tamu.edu/undergraduate/course-descriptions/arab"
+    },
+    {
+        "query": "What are the prerequisites for STAT 607 Sampling at Texas A&M?",
+        "expected_url": "https://catalog.tamu.edu/graduate/course-descriptions/stat"
+    },
+    {
+        "query": "What is the Code of Honor at Texas A&M?",
+        "expected_url": "https://aggiehonor.tamu.edu/"
+    },
+    {
+        "query": "What is the official process for submitting a degree plan at Texas A&M?",
+        "expected_url": ""
+    },
+    {
+        "query": "What are the rules regarding student parking permits on campus?",
+        "expected_url": ""
+    },
+    {
+        "query": "How does a student appeal a final grade at Texas A&M?",
+        "expected_url": ""
+    },
+    {
+        "query": "How does a student officially apply for graduation at Texas A&M?",
+        "expected_url": ""
+    },
+    {
+        "query": "How many semester credit hours of resident study are required for the Master of Science in Cybersecurity residence requirement?",
+        "expected_url": "catalog.tamu.edu"
+    },
+    {
+        "query": "What CBK chemistry and biology courses must Zoology BS students complete before their fifth semester?",
+        "expected_url": "catalog.tamu.edu"
+    },
+    {
+        "query": "What can students find on the interactive Aggieland Saturday map?",
+        "expected_url": "catalog.tamu.edu"
+    },
+    {
+        "query": "What is the maximum combined credit hours of MAST 484, 485, and 491 that can count as electives for the Maritime Studies BA?",
+        "expected_url": "catalog.tamu.edu"
+    },
+    {
+        "query": "Which Computer Science and Engineering faculty member is quoted in the 2020 CPI election results discussing collaboration with US and international researchers?",
+        "expected_url": "cpi.tamu.edu/council-membership/election-results/2020-election-results"
+    },
+    {
+        "query": "What course do Business Honors students take in place of BUSN 101 in their first year fall?",
+        "expected_url": "catalog.tamu.edu"
+    },
+    {
+        "query": "What are the prerequisites for SPMT 681 Seminar and what is it about?",
+        "expected_url": "catalog.tamu.edu"
+    }
+]
