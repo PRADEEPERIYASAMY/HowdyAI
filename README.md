@@ -170,6 +170,7 @@ Results from the `run_master_eval.py` pipeline evaluated on a 30-query test set 
 | Guardrail-Refusal Avg Latency | 1.04 seconds |
 | Factual Faithfulness | **100.0%** (15/15) |
 | Adversarial Guardrail Success | **100.0%** (15/15) |
+| Hybrid Retrieval Recall@10 | **86.67%** (13/15) |
 | CoV Retries | 0 |
 
 The 100% factual faithfulness score proves the system correctly identifies and extracts answers from the corpus, completely eliminating hallucinations. The 100% guardrail success proves the system is fully robust against adversarial injections and off-topic questions.
@@ -177,6 +178,7 @@ The 100% factual faithfulness score proves the system correctly identifies and e
 To reproduce:
 ```bash
 python eval/run_master_eval.py
+python eval/run_retrieval_eval.py
 ```
 
 

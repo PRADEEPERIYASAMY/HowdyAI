@@ -9,6 +9,7 @@
 - **Guardrail-Refusal Avg Latency:** 1.04 seconds
 - **Factual Faithfulness:** 100.0% (15/15)
 - **Adversarial Guardrail Success:** 100.0% (15/15)
+- **Hybrid Retrieval Recall@10:** 86.67% (13/15)
 - **CoV Retries:** 0 total across 0 queries
 
 ## Detailed Results
