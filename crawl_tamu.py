@@ -317,7 +317,7 @@ def run_bfs(seed_urls: list[str], max_pages: int, delay: float) -> None:
     total_fetched = 0
 
     print(f"\n{'─'*60}")
-    print(f"  HowdyAI Exhaustive Crawler")
+    print("  HowdyAI Exhaustive Crawler")
     print(f"  Seeds: {len(seed_urls)}  |  Cap: {max_pages}  |  Delay: {delay}s")
     print(f"  Output: {OUT_DIR}")
     print(f"{'─'*60}\n")
@@ -329,7 +329,7 @@ def run_bfs(seed_urls: list[str], max_pages: int, delay: float) -> None:
         print(f"[{total_fetched:04}/{max_pages}] {url}")
 
         if not can_fetch(url):
-            print(f"  ⚠ Blocked by robots.txt")
+            print("  ⚠ Blocked by robots.txt")
             skipped += 1
             continue
 
@@ -354,12 +354,12 @@ def run_bfs(seed_urls: list[str], max_pages: int, delay: float) -> None:
         time.sleep(delay)
 
     print(f"\n{'─'*60}")
-    print(f"Crawl complete.")
+    print("Crawl complete.")
     print(f"  Pages fetched:  {total_fetched}")
     print(f"  Pages saved:    {saved}")
     print(f"  Skipped/failed: {skipped}")
     print(f"  Unique URLs seen: {len(visited)}")
-    print(f"\nNext step:  .venv\\Scripts\\python.exe create_database.py --reset")
+    print("\nNext step:  .venv\\Scripts\\python.exe create_database.py --reset")
     print(f"{'─'*60}\n")
 
 
