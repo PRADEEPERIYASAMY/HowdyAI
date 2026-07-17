@@ -49,7 +49,7 @@ def evaluate_retrieval():
     
     recall = hits / total if total > 0 else 0
     logger.info(f"\n{'='*40}")
-    logger.info(f"Retrieval Eval Complete")
+    logger.info("Retrieval Eval Complete")
     logger.info(f"Recall@10: {recall:.2%} ({hits}/{total})")
     logger.info(f"{'='*40}")
 
